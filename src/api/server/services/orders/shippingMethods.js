@@ -132,8 +132,6 @@ class ShippingMethodsService {
             $addFields: { price: '$conditions.price'}
           });
 
-          console.log(JSON.stringify(aggregate));
-
           resolve({ isAggregate: true, filter: aggregate });
         })
       } else {
