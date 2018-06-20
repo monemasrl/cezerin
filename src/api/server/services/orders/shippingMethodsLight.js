@@ -7,7 +7,11 @@ class ShippingMethodsLightService {
   constructor() {}
 
   getMethods(filter = {}) {
-    return mongo.db.collection('shippingMethods').find(filter).toArray().then(items => items.map(item => this.changeProperties(item)));
+    if (filter.isAggregate) {
+      return mongo.db.collection('shippingMethods').aggregate(filter.filter).toArray().then(items => items.map(item => this.changeProperties(item)));
+    } else {
+      return mongo.db.collection('shippingMethods').find(filter).toArray().then(items => items.map(item => this.changeProperties(item)));
+    }
   }
 
   getMethodPrice(id) {

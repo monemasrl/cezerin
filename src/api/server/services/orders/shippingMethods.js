@@ -28,6 +28,7 @@ class ShippingMethodsService {
       if (order_id) {
         return OrdersService.getSingleOrder(order_id).then(order => {
           if (order) {
+
             filter['$and'] = [];
             filter['$and'].push({
               $or: [
@@ -46,7 +47,7 @@ class ShippingMethodsService {
                   'conditions.weight_total_max': 0
                 }, {
                   'conditions.weight_total_max': {
-                    $gte: order.weight_total
+                    $gt: order.weight_total
                   }
                 }
               ]
@@ -117,7 +118,23 @@ class ShippingMethodsService {
               });
             }
           }
-          resolve(filter);
+          let aggregate = [];
+
+          aggregate.push({
+            $unwind: '$conditions'
+          });
+
+          aggregate.push({
+            $match: filter
+          })
+          
+          aggregate.push({
+            $addFields: { price: '$conditions.price'}
+          });
+
+          console.log(JSON.stringify(aggregate));
+
+          resolve({ isAggregate: true, filter: aggregate });
         })
       } else {
         resolve(filter);
@@ -170,25 +187,36 @@ class ShippingMethodsService {
   }
 
   getShippingMethodConditions(conditions) {
-    return conditions
-      ? {
-        'countries': parse.getArrayIfValid(conditions.countries) || [],
-        'states': parse.getArrayIfValid(conditions.states) || [],
-        'cities': parse.getArrayIfValid(conditions.cities) || [],
-        'subtotal_min': parse.getNumberIfPositive(conditions.subtotal_min) || 0,
-        'subtotal_max': parse.getNumberIfPositive(conditions.subtotal_max) || 0,
-        'weight_total_min': parse.getNumberIfPositive(conditions.weight_total_min) || 0,
-        'weight_total_max': parse.getNumberIfPositive(conditions.weight_total_max) || 0
-      }
-      : {
-        'countries': [],
-        'states': [],
-        'cities': [],
-        'subtotal_min': 0,
-        'subtotal_max': 0,
-        'weight_total_min': 0,
-        'weight_total_max': 0
-      };
+    if(conditions && Array.isArray(conditions) && conditions.length > 0){
+      return conditions.map(row => ({
+        countries: parse.getArrayIfValid(row.country),
+        states: parse.getArrayIfValid(row.state),
+        cities: parse.getArrayIfValid(row.city),
+        subtotal_min: parse.getNumberIfPositive(row.subtotal_min) || 0,
+        subtotal_max: parse.getNumberIfPositive(row.subtotal_max) || 0,
+        weight_total_min: parse.getNumberIfPositive(row.weight_total_min) || 0,
+        weight_total_max: parse.getNumberIfPositive(row.weight_total_max) || 0,
+        price: parse.getNumberIfPositive(row.price) || 0
+      }));
+    } else 
+   return conditions
+    ? {
+     'countries': parse.getArrayIfValid(conditions.countries) || [],
+     'states': parse.getArrayIfValid(conditions.states) || [],
+     'cities': parse.getArrayIfValid(conditions.cities) || [],
+     'subtotal_min': parse.getNumberIfPositive(conditions.subtotal_min) || 0,
+     'subtotal_max': parse.getNumberIfPositive(conditions.subtotal_max) || 0,
+     'weight_total_min': parse.getNumberIfPositive(conditions.weight_total_min) || 0,
+     'weight_total_max': parse.getNumberIfPositive(conditions.weight_total_max) || 0
+    } : {
+     'countries': [],
+     'states': [],
+      'cities': [],
+      'subtotal_min': 0,
+      'subtotal_max': 0,
+      'weight_total_min': 0,
+      'weight_total_max': 0
+    };
   }
 
   getFields(fields) {
@@ -230,6 +258,10 @@ class ShippingMethodsService {
 
     if (data.name !== undefined) {
       method.name = parse.getString(data.name);
+    }
+
+    if (data.type !== undefined) {
+      method.name = parse.getString(data.type);
     }
 
     if (data.description !== undefined) {
